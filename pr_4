@@ -1,0 +1,289 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <cctype>
+#include <regex>   
+#include <unistd.h>
+
+
+using namespace std;
+
+unordered_map<char, int> createBadCharTable(const string& pattern) {
+    unordered_map<char, int> badCharTable;
+    int length = pattern.length();
+
+    for (int i = 0; i < length; ++i) {
+        badCharTable[pattern[i]] = i;
+    }
+
+    return badCharTable;
+}
+
+vector<int> boyerMooreSearch(const string& text, const string& pattern) {
+    vector<int> positions;
+    int textLength = text.length();
+    int patternLength = pattern.length();
+
+    if (patternLength == 0 || textLength < patternLength) {
+        return positions;
+    }
+
+    auto badCharTable = createBadCharTable(pattern);
+    int shift = 0;
+
+    while (shift <= textLength - patternLength) {
+        int j = patternLength - 1;
+
+        while (j >= 0 && pattern[j] == text[shift + j]) {
+            j--;
+        }
+
+        if (j < 0) {
+            positions.push_back(shift);
+            shift += (shift + patternLength < textLength) ? 
+                    patternLength - badCharTable[text[shift + patternLength]] : 1;
+        } else {
+            shift += max(1, j - badCharTable[text[shift + j]]);
+        }
+    }
+
+    return positions;
+}
+
+string removeCharacters(const string& word, const string& charsToRemove) {
+    string result;
+    for (char ch : word) {
+        if (charsToRemove.find(ch) == string::npos) { 
+            result += ch;
+        }
+    }
+    return result; 
+}
+
+bool containsDigits(const string& word) {
+    for (char ch : word) {
+        if (isdigit(ch)) {
+            return true; 
+        }
+    }
+    return false; 
+}
+
+string toLowerCase(const string& input) {
+    stringstream ss(input);
+    string word;
+    string result;
+
+    
+    while (ss >> word) {
+        
+        for (char& ch : word) {
+            ch = tolower(ch);
+        }
+
+        if (!result.empty()) {
+            result += " ";
+        }
+        result += word;
+    }
+
+    return result;
+}
+
+string removeExtraPunctuation(const string& input) {
+    stringstream ss(input);
+    string result;
+    char lastChar = '0'; 
+    int dotCount = 0;
+    string punctuation = "!#$%&'()*+,-./:;<=>?@[^_{|}~";
+
+    for (char currentChar : input) {
+        if (punctuation.find(currentChar) != string::npos) {
+            if (currentChar == '.') {
+                dotCount++;
+                if (dotCount <= 3) {
+                    result += currentChar;
+                }
+                continue; 
+            } else {
+                dotCount = 0;                
+                if (currentChar == lastChar) {
+                    continue;
+                }
+            }
+        } else {
+            dotCount = 0;
+        }
+
+        result += currentChar;
+        lastChar = currentChar;
+    }
+
+    return result;
+}
+
+string removeExtraSpaces(const string& input) {
+    stringstream ss(input);
+    string word;
+    string result;
+
+    while (ss >> word) {
+        if (!result.empty()) {
+            result += " ";
+        }
+        result += word;
+    }
+
+    return result;
+}
+
+bool isValidInput(const string& input, vector<string>& words) {
+    if (input.empty() || input.back() != '.') {
+        cout << "Ввод должен заканчиваться точкой." << endl;
+        return false;
+    }
+
+    string trimmedInput = input.substr(0, input.size() - 1);
+
+    istringstream iss(trimmedInput);
+    string word;
+
+    while (iss >> word) {
+
+        if (word.length() < 1 || word.length() > 10) {
+            cout << "Каждое слово должно содержать от 1 до 10 символов." << endl;
+            return false;
+        }
+        
+        words.push_back(word);
+    }
+
+    if (words.size() < 1 || words.size() > 50) {
+        cout << "Количество слов должно быть от 1 до 50." << endl;
+        return false;
+    }
+
+    return true;
+}
+
+string inputFromKeyboard() {
+    string userInput;
+    cout << "Введите последовательность слов (завершите точкой): ";
+    getline(cin, userInput);
+    return userInput;
+}
+
+string inputFromFile() {
+    string filename;
+    cout << "Введите имя файла: ";
+    cin >> filename;
+
+    ifstream file(filename);
+    if (!file) {
+        cout << "Файл не найден. Попробуйте снова." << endl;
+        return inputFromFile();
+    }
+
+    string content;
+    string line;
+    while (getline(file, line)) {
+        content += line;
+    }
+    
+    return content;
+}
+
+
+int main() {
+    int choice;
+    vector<string> words;
+    string userInput; 
+    string editedInput;
+    bool flag = true;
+    string cleanedInput;
+    system("clear");
+    while (flag) {
+        cout << endl;
+        cout << "Введите номер задания(1 - 4): ";
+        cin >> choice;
+        cout << endl;
+        cin.ignore();
+
+        switch (choice) {
+            case 1: {
+                int user_choice;
+                cout << "Выберите способ ввода текста(1 - с клавиатуры, 2 - из файла): ";
+                cin >> user_choice;
+                cin.ignore();
+
+                if (user_choice == 1) {
+                    userInput = inputFromKeyboard(); 
+                } else if (user_choice == 2) {
+                    userInput = inputFromFile();
+                } else {
+                    cout << "Неверный выбор. Пожалуйста, попробуйте снова." << endl;
+                    return 0;
+                }
+
+                if (isValidInput(userInput, words)) {
+                    cout << "Введенные слова: ";
+                    for (const auto& word : words) {
+                        cout << word << " ";
+                    }
+                    cout << endl;
+                } else {
+                    cout << "Нет корректных слов для вывода." << endl;
+                }
+                break;
+            }
+            case 2: {
+                editedInput = removeExtraSpaces(userInput);
+                editedInput = removeExtraPunctuation(editedInput);
+                editedInput = toLowerCase(editedInput);
+                cout << "Отредактированный текст: " << editedInput << endl;
+                break;
+            } 
+            case 3: {
+                string charsToRemove;
+                cout << "Введите набор символов для удаления: ";
+                getline(cin, charsToRemove);
+                cout << "Введенные слова (без цифр и с удаленными символами): ";
+                vector<string> editedWords;
+                istringstream iss(editedInput);
+                string word;
+                while (iss >> word) {
+                    editedWords.push_back(word);
+                }
+                for (const auto& word : editedWords) {
+                    if (!containsDigits(word)) { 
+                        string cleanedWord = removeCharacters(word, charsToRemove);
+                        cleanedInput += cleanedWord + " "; 
+                        cout << cleanedWord << " "; 
+                    }
+                }
+                cout << endl;
+                break;
+            }
+            case 4:{
+                string substring;
+                cout << "Введите подстроку для поиска: ";
+                getline(cin, substring);
+
+                vector<int> bmPositions = boyerMooreSearch(cleanedInput, substring);
+                cout << "Результаты поиска Бойера-Мура: ";
+                for (int pos : bmPositions) {
+                    cout << pos << " ";
+                }
+                cout << endl;
+                break;
+            }
+            default:
+                cout << "Неверный номер задания." << endl;
+                break;
+        }
+    }
+
+    return 0;
+}
